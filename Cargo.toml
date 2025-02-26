@@ -2,5 +2,9 @@
 name = "zero2prod"
 version = "0.1.0"
 edition = "2021"
+authors = ["archyuan"]
 
 [dependencies]
+actix-web = "4.0"
+actix-tls = { version = "1.0", features = ["rustls"] }
+actix-http = "3.0.0"
