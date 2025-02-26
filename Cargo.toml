@@ -4,7 +4,17 @@ version = "0.1.0"
 edition = "2021"
 authors = ["archyuan"]
 
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/main.rs"
+name = "zero2prod"
+
 [dependencies]
 actix-web = "4.0"
 actix-tls = { version = "1.0", features = ["rustls"] }
 actix-http = "3.0.0"
+actix-rt = "=2.6.0"
+reqwest = "0.12.12"
+tokio = "1.43.0"
