@@ -1,8 +1,8 @@
 use std::net::TcpListener;
 
-use sqlx::{Connection, Executor, PgConnection, PgPool};
+use sqlx::{Executor, PgPool};
 use uuid::Uuid;
-use zero2prod::configuration::{get_configuration, DatabaseSettings};
+use zero2prod::configuration::{get_configuration, DatabaseSettings, Settings};
 
 #[actix_rt::test]
 async fn health_check_works() {
@@ -15,14 +15,13 @@ async fn health_check_works() {
         .send()
         .await
         .expect("Failed to execute request");
-
+    drop_database(test_app).await;
     assert!(response.status().is_success());
 }
 
 #[actix_rt::test]
 async fn subscribe_returns_a_200_for_valid_form_data() {
     let test_app = spawn_app().await;
-    let configuration = get_configuration().expect("Failed to read configuration");
 
     let client = reqwest::Client::new();
 
@@ -41,7 +40,7 @@ async fn subscribe_returns_a_200_for_valid_form_data() {
         .fetch_one(&test_app.db_pool)
         .await
         .expect("Failed to fetch saved subscription");
-
+    drop_database(test_app).await;
     assert_eq!(saved.email, "urlula_le_guin@gmail.com");
     assert_eq!(saved.name, "le guin");
 }
@@ -73,17 +72,23 @@ async fn subscribe_returns_a_400_when_data_is_missing() {
             error_message
         );
     }
+    drop_database(test_app).await;
 }
 
 pub struct TestApp {
     pub address: String,
     pub db_pool: PgPool,
+    pub settings: Settings,
 }
 
-impl Drop for TestApp {
-    fn drop(&mut self) {
-        //todo , 删除数据库
+async fn drop_database(test_app: TestApp) {
+    
+    if let Ok(p) = PgPool::connect(&test_app.settings.database.connection_string_without_db())
+    .await {
+        let sql = format!(r#"drop database "{}";"#, &test_app.settings.database.database_name);
+        let _ = p.execute(sql.as_str()).await;
     }
+    
 }
 
 async fn configure_database(config: &DatabaseSettings) -> PgPool {
@@ -122,5 +127,6 @@ async fn spawn_app() -> TestApp {
     TestApp {
         address,
         db_pool: connection,
+        settings: configuration,
     }
 }
