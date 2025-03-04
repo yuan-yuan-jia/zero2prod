@@ -27,12 +27,11 @@ pub async fn subscribe(form: web::Form<FormData>, connection: web::Data<PgPool>)
             subscriber_name  =  %form.name
     );
     //using `enter` in an async function is not a good idea
-    //using `enter` there is just 
+    //using `enter` there is just
     // `info_span` 返回新创建的 span，但我们必须显式使用 `.enter()` 方法进入它以激活它。
     // `.enter()` 返回一个 `Entered` 实例，这是一个守卫：只要守卫变量未被释放，所有下游的跨度和日志事件都将被注册为已进入跨度的子项。
     //let _request_span_guard = request_span.enter();
     //tracing::info!("request_id {} - Saving new subscriber details in the database", request_id);
-    
 
     // 我们不在 `query_span` 上调用 `.enter`！`.instrument` 会在查询未来的生命周期中的适当时刻处理它。
     let query_span = tracing::info_span!("Saving new subsriber details in the database");
@@ -53,10 +52,13 @@ pub async fn subscribe(form: web::Form<FormData>, connection: web::Data<PgPool>)
 
     match result {
         Ok(_) => {
-        tracing::info!("request_id {} - New subscriber details have been saved", request_id);
-            HttpResponse::Ok().finish() 
-        },
-        Err(e) => { 
+            tracing::info!(
+                "request_id {} - New subscriber details have been saved",
+                request_id
+            );
+            HttpResponse::Ok().finish()
+        }
+        Err(e) => {
             // this error log falls outside of `query_span`
             tracing::error!("request_id {} - Failed to execute query: {}", request_id, e);
             HttpResponse::InternalServerError().finish()

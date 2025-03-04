@@ -82,13 +82,14 @@ pub struct TestApp {
 }
 
 async fn drop_database(test_app: TestApp) {
-    
-    if let Ok(p) = PgPool::connect(&test_app.settings.database.connection_string_without_db())
-    .await {
-        let sql = format!(r#"drop database "{}";"#, &test_app.settings.database.database_name);
+    if let Ok(p) = PgPool::connect(&test_app.settings.database.connection_string_without_db()).await
+    {
+        let sql = format!(
+            r#"drop database "{}";"#,
+            &test_app.settings.database.database_name
+        );
         let _ = p.execute(sql.as_str()).await;
     }
-    
 }
 
 async fn configure_database(config: &DatabaseSettings) -> PgPool {

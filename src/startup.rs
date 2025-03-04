@@ -10,7 +10,7 @@ pub fn run(listener: TcpListener, connection: PgPool) -> Result<Server, std::io:
     let connection = web::Data::new(connection);
     let server = HttpServer::new(move || {
         App::new()
-            .wrap(Logger::default()) 
+            .wrap(Logger::default())
             .route("/health_check", web::get().to(health_check))
             .route("/subscriptions", web::post().to(subscribe))
             // 注册一个连接作为程序状态的一部分
