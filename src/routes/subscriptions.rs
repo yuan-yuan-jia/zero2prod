@@ -2,6 +2,11 @@ use actix_web::{web, HttpResponse, Responder};
 use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
+// Instrument::instrument 完全按照我们的期望执行：
+// 每次轮询 self（即 future）时，
+// 它会进入我们传递的参数中的 span；
+// 每次 future 暂停时，它会退出该 span。
+use tracing::Instrument;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
@@ -25,8 +30,12 @@ pub async fn subscribe(form: web::Form<FormData>, connection: web::Data<PgPool>)
     //using `enter` there is just 
     // `info_span` 返回新创建的 span，但我们必须显式使用 `.enter()` 方法进入它以激活它。
     // `.enter()` 返回一个 `Entered` 实例，这是一个守卫：只要守卫变量未被释放，所有下游的跨度和日志事件都将被注册为已进入跨度的子项。
-    let _request_span_guard = request_span.enter();
-    tracing::info!("request_id {} - Saving new subscriber details in the database", request_id);
+    //let _request_span_guard = request_span.enter();
+    //tracing::info!("request_id {} - Saving new subscriber details in the database", request_id);
+    
+
+    // 我们不在 `query_span` 上调用 `.enter`！`.instrument` 会在查询未来的生命周期中的适当时刻处理它。
+    let query_span = tracing::info_span!("Saving new subsriber details in the database");
     let result = sqlx::query!(
         r#"
         INSERT INTO subscriptions (id,email,name,subscribed_at)
@@ -38,6 +47,8 @@ pub async fn subscribe(form: web::Form<FormData>, connection: web::Data<PgPool>)
         Utc::now()
     )
     .execute(connection.get_ref())
+    // First we attach the instrumentation,then we `.await` it
+    .instrument(query_span)
     .await;
 
     match result {
@@ -45,7 +56,8 @@ pub async fn subscribe(form: web::Form<FormData>, connection: web::Data<PgPool>)
         tracing::info!("request_id {} - New subscriber details have been saved", request_id);
             HttpResponse::Ok().finish() 
         },
-        Err(e) => {
+        Err(e) => { 
+            // this error log falls outside of `query_span`
             tracing::error!("request_id {} - Failed to execute query: {}", request_id, e);
             HttpResponse::InternalServerError().finish()
         }
