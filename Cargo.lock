@@ -3853,6 +3853,7 @@ dependencies = [
  "serde",
  "sqlx",
  "tokio 1.43.0",
+ "tracing",
  "uuid",
 ]
 
