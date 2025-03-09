@@ -1,4 +1,5 @@
 use once_cell::sync::Lazy;
+use secrecy::ExposeSecret;
 use sqlx::{Executor, PgPool};
 use std::net::TcpListener;
 use uuid::Uuid;
@@ -97,7 +98,14 @@ pub struct TestApp {
 }
 
 async fn drop_database(test_app: TestApp) {
-    if let Ok(p) = PgPool::connect(&test_app.settings.database.connection_string_without_db()).await
+    if let Ok(p) = PgPool::connect(
+        &test_app
+            .settings
+            .database
+            .connection_string_without_db()
+            .expose_secret(),
+    )
+    .await
     {
         let sql = format!(
             r#"drop database "{}";"#,
@@ -108,7 +116,7 @@ async fn drop_database(test_app: TestApp) {
 }
 
 async fn configure_database(config: &DatabaseSettings) -> PgPool {
-    let mut pool = PgPool::connect(&config.connection_string_without_db())
+    let mut pool = PgPool::connect(&config.connection_string_without_db().expose_secret())
         .await
         .expect("Failed to connect to Postgres");
 
@@ -117,7 +125,7 @@ async fn configure_database(config: &DatabaseSettings) -> PgPool {
         .expect("Failed to create database");
 
     // Migrate database
-    pool = PgPool::connect(&config.connection_string())
+    pool = PgPool::connect(&config.connection_string().expose_secret())
         .await
         .expect("Failed to connect Postgres");
 
