@@ -2,6 +2,10 @@ use actix_web::{web, HttpResponse, Responder};
 use chrono::Utc;
 use sqlx::PgPool;
 use uuid::Uuid;
+// 一个扩展的trait，提供了`graphemes` 方法
+// 为`String`和`&str`
+
+use crate::domain::NewSubscriber;
 // Instrument::instrument 完全按照我们的期望执行：
 // 每次轮询 self（即 future）时，
 // 它会进入我们传递的参数中的 span；
@@ -15,17 +19,20 @@ pub struct FormData {
 
 #[tracing::instrument(
     name = "Saving new subscriber details in the database",
-    skip(form, pool)
+    skip(new_subscriber, pool)
 )]
-pub async fn insert_subscriber(pool: &PgPool, form: &FormData) -> Result<(), sqlx::Error> {
+pub async fn insert_subscriber(
+    pool: &PgPool,
+    new_subscriber: &NewSubscriber,
+) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"
         INSERT INTO subscriptions (id,email,name,subscribed_at)
         VALUES ($1,$2,$3,$4)
     "#,
         Uuid::new_v4(),
-        form.email,
-        form.name,
+        new_subscriber.email.as_str(),
+        new_subscriber.name.inner_ref(),
         Utc::now()
     )
     .execute(pool)
@@ -83,8 +90,12 @@ pub async fn subscribe(form: web::Form<FormData>, connection: web::Data<PgPool>)
     //   // First we attach the instrumentation,then we `.await` it
     //   .instrument(query_span)
     //   .await;
-
-    match insert_subscriber(&connection, &form).await {
+    let subscriber_name = crate::domain::SubscriberName::parse(form.name.clone());
+    let subscriber = NewSubscriber {
+        email: form.email.clone(),
+        name: subscriber_name.expect("Name validation failed."),
+    };
+    match insert_subscriber(&connection, &subscriber).await {
         Ok(_) => HttpResponse::Ok().finish(),
         Err(_) => {
             // this error log falls outside of `query_span`

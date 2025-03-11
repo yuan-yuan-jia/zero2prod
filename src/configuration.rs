@@ -48,9 +48,8 @@ impl DatabaseSettings {
 }
 
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {
-   let base_path = std::env::current_dir()
-   .expect("Failed to determine the current directory");
-let configuration_directory = base_path.join("configuration");
+    let base_path = std::env::current_dir().expect("Failed to determine the current directory");
+    let configuration_directory = base_path.join("configuration");
     // Detect the running enviroment
     // Default to `local` if unspecified
     let environment = std::env::var("APP_ENVIRONMEN").unwrap_or_else(|_| "local".to_string());
@@ -58,10 +57,10 @@ let configuration_directory = base_path.join("configuration");
     let environment_filename = format!("{}.yaml", environment);
     let settings = config::Config::builder()
         .add_source(config::File::from(
-            configuration_directory.join("base.yaml")
+            configuration_directory.join("base.yaml"),
         ))
         .add_source(config::File::from(
-            configuration_directory.join(environment_filename)
+            configuration_directory.join(environment_filename),
         ))
         .build()?;
 
