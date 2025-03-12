@@ -1,4 +1,5 @@
 use crate::domain::NewSubscriber;
+use crate::domain::SubscriberEmail;
 use crate::domain::SubscriberName;
 use actix_web::{web, HttpResponse, Responder};
 use chrono::Utc;
@@ -32,7 +33,7 @@ pub async fn insert_subscriber(
         VALUES ($1,$2,$3,$4)
     "#,
         Uuid::new_v4(),
-        new_subscriber.email.as_str(),
+        new_subscriber.email.as_ref(),
         new_subscriber.name.inner_ref(),
         Utc::now()
     )
@@ -91,10 +92,17 @@ pub async fn subscribe(form: web::Form<FormData>, connection: web::Data<PgPool>)
     //   // First we attach the instrumentation,then we `.await` it
     //   .instrument(query_span)
     //   .await;
-    let subscriber_name = SubscriberName::parse(form.name.clone());
+    let subscriber_name = match SubscriberName::parse(form.name.clone()) {
+        Ok(name) => name,
+        Err(_) => return HttpResponse::BadRequest().finish(),
+    };
+    let subscriber_email = match SubscriberEmail::parse(form.email.clone()) {
+        Ok(email) => email,
+        Err(_) => return HttpResponse::BadRequest().finish(),
+    };
     let subscriber = NewSubscriber {
-        email: form.email.clone(),
-        name: subscriber_name.expect("Name validation failed."),
+        email: subscriber_email,
+        name: subscriber_name,
     };
     match insert_subscriber(&connection, &subscriber).await {
         Ok(_) => HttpResponse::Ok().finish(),

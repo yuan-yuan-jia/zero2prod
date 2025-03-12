@@ -1,6 +1,3 @@
-use std::{collections::HashMap, env::current_dir};
-
-use config::Environment;
 use secrecy::{ExposeSecret, Secret};
 
 #[derive(serde::Deserialize)]
