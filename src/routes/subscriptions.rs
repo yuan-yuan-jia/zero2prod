@@ -1,3 +1,5 @@
+use crate::domain::NewSubscriber;
+use crate::domain::SubscriberName;
 use actix_web::{web, HttpResponse, Responder};
 use chrono::Utc;
 use sqlx::PgPool;
@@ -5,7 +7,6 @@ use uuid::Uuid;
 // 一个扩展的trait，提供了`graphemes` 方法
 // 为`String`和`&str`
 
-use crate::domain::NewSubscriber;
 // Instrument::instrument 完全按照我们的期望执行：
 // 每次轮询 self（即 future）时，
 // 它会进入我们传递的参数中的 span；
@@ -90,7 +91,7 @@ pub async fn subscribe(form: web::Form<FormData>, connection: web::Data<PgPool>)
     //   // First we attach the instrumentation,then we `.await` it
     //   .instrument(query_span)
     //   .await;
-    let subscriber_name = crate::domain::SubscriberName::parse(form.name.clone());
+    let subscriber_name = SubscriberName::parse(form.name.clone());
     let subscriber = NewSubscriber {
         email: form.email.clone(),
         name: subscriber_name.expect("Name validation failed."),
