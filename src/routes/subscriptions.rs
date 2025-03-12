@@ -92,17 +92,9 @@ pub async fn subscribe(form: web::Form<FormData>, connection: web::Data<PgPool>)
     //   // First we attach the instrumentation,then we `.await` it
     //   .instrument(query_span)
     //   .await;
-    let subscriber_name = match SubscriberName::parse(form.name.clone()) {
-        Ok(name) => name,
+    let subscriber = match form.0.try_into() {
+        Ok(r) => r,
         Err(_) => return HttpResponse::BadRequest().finish(),
-    };
-    let subscriber_email = match SubscriberEmail::parse(form.email.clone()) {
-        Ok(email) => email,
-        Err(_) => return HttpResponse::BadRequest().finish(),
-    };
-    let subscriber = NewSubscriber {
-        email: subscriber_email,
-        name: subscriber_name,
     };
     match insert_subscriber(&connection, &subscriber).await {
         Ok(_) => HttpResponse::Ok().finish(),
@@ -111,5 +103,22 @@ pub async fn subscribe(form: web::Form<FormData>, connection: web::Data<PgPool>)
             // tracing::error!("request_id {} - Failed to execute query: {}", request_id, e);
             HttpResponse::InternalServerError().finish()
         }
+    }
+}
+
+pub fn parse_subscriber(form: FormData) -> Result<NewSubscriber, String> {
+    let name = SubscriberName::parse(form.name)?;
+    let email = SubscriberEmail::parse(form.email)?;
+
+    Ok(NewSubscriber { email, name })
+}
+
+impl TryFrom<FormData> for NewSubscriber {
+    type Error = String;
+
+    fn try_from(value: FormData) -> Result<Self, Self::Error> {
+        let name = SubscriberName::parse(value.name)?;
+        let email = SubscriberEmail::parse(value.email)?;
+        Ok(Self { email, name })
     }
 }
